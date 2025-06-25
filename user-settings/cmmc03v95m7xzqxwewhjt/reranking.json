@@ -1,0 +1,9 @@
+{
+  "enableReranking": true,
+  "rerankingProvider": "siliconflow",
+  "rerankingModel": "BAAI/bge-reranker-v2-m3",
+  "initialRerankCandidates": 50,
+  "finalRerankTopN": 5,
+  "rerankingCustomEndpoint": "",
+  "updated_at": "2025-06-24T13:09:08.110Z"
+}

@@ -1,0 +1,8 @@
+{
+  "provider": "siliconflow",
+  "model": "BAAI/bge-m3",
+  "api_key": "sk-tzlrvglflwxfthglqtqvahejwghbsfigpdanvielhafvorhv",
+  "encoding_format": "float",
+  "custom_endpoint": "",
+  "updated_at": "2025-06-24T13:09:08.105Z"
+}
