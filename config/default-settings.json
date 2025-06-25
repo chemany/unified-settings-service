@@ -1,0 +1,31 @@
+{
+  "global_settings": {
+    "calendar_base": {
+      "default_view": "month",
+      "week_start": 1,
+      "time_format": "24h",
+      "first_day_of_week": "monday"
+    }
+  },
+  "version": "2.0.0",
+  "last_updated": "2025-01-21T10:00:00.000Z",
+  "api_endpoints": {
+    "openai": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com/v1",
+    "deepseek": "https://api.deepseek.com",
+    "google": "https://generativelanguage.googleapis.com/v1beta",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "builtin": "https://openrouter.ai/api/v1",
+    "ollama": "http://localhost:11434"
+  },
+  "correct_full_endpoints": {
+    "openai_chat": "https://api.openai.com/v1/chat/completions",
+    "anthropic_messages": "https://api.anthropic.com/v1/messages",
+    "deepseek_chat": "https://api.deepseek.com/chat/completions",
+    "google_generate": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+    "openrouter_chat": "https://openrouter.ai/api/v1/chat/completions",
+    "builtin_chat": "https://openrouter.ai/api/v1/chat/completions",
+    "ollama_generate": "http://localhost:11434/api/generate"
+  },
+  "notes": "这个文件定义了各个AI提供商的正确API端点。请确保在配置中使用正确的端点以避免返回HTML页面而不是API响应。已更新为使用最新的DeepSeek R1免费模型。"
+} 
