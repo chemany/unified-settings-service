@@ -386,6 +386,138 @@ class FileSettingsController {
             });
         }
     }
+
+    /**
+     * 获取用户Embedding设置
+     * GET /api/file-settings/embedding
+     * 代理到灵枢笔记后端
+     */
+    static async getEmbeddingSettings(req, res) {
+        try {
+            const axios = require('axios');
+            
+            console.log(`[FileSettings] 代理Embedding设置请求到灵枢笔记后端`);
+            
+            // 转发请求到灵枢笔记后端
+            const response = await axios.get('http://127.0.0.1:3001/api/unified-settings/embedding', {
+                headers: {
+                    'Authorization': req.headers.authorization,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            res.json(response.data);
+            
+        } catch (error) {
+            console.error('[FileSettings] 获取Embedding设置失败:', error);
+            if (error.response) {
+                res.status(error.response.status).json(error.response.data);
+            } else {
+                res.status(500).json({
+                    error: '获取Embedding设置失败'
+                });
+            }
+        }
+    }
+
+    /**
+     * 保存用户Embedding设置
+     * POST /api/file-settings/embedding
+     * 代理到灵枢笔记后端
+     */
+    static async saveEmbeddingSettings(req, res) {
+        try {
+            const axios = require('axios');
+            
+            console.log(`[FileSettings] 代理Embedding设置保存请求到灵枢笔记后端`);
+            
+            // 转发请求到灵枢笔记后端
+            const response = await axios.post('http://127.0.0.1:3001/api/unified-settings/embedding', req.body, {
+                headers: {
+                    'Authorization': req.headers.authorization,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            res.json(response.data);
+            
+        } catch (error) {
+            console.error('[FileSettings] 保存Embedding设置失败:', error);
+            if (error.response) {
+                res.status(error.response.status).json(error.response.data);
+            } else {
+                res.status(500).json({
+                    error: '保存Embedding设置失败'
+                });
+            }
+        }
+    }
+
+    /**
+     * 获取用户Reranking设置
+     * GET /api/file-settings/reranking
+     * 代理到灵枢笔记后端
+     */
+    static async getRerankingSettings(req, res) {
+        try {
+            const axios = require('axios');
+            
+            console.log(`[FileSettings] 代理Reranking设置请求到灵枢笔记后端`);
+            
+            // 转发请求到灵枢笔记后端
+            const response = await axios.get('http://127.0.0.1:3001/api/unified-settings/reranking', {
+                headers: {
+                    'Authorization': req.headers.authorization,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            res.json(response.data);
+            
+        } catch (error) {
+            console.error('[FileSettings] 获取Reranking设置失败:', error);
+            if (error.response) {
+                res.status(error.response.status).json(error.response.data);
+            } else {
+                res.status(500).json({
+                    error: '获取Reranking设置失败'
+                });
+            }
+        }
+    }
+
+    /**
+     * 保存用户Reranking设置
+     * POST /api/file-settings/reranking
+     * 代理到灵枢笔记后端
+     */
+    static async saveRerankingSettings(req, res) {
+        try {
+            const axios = require('axios');
+            
+            console.log(`[FileSettings] 代理Reranking设置保存请求到灵枢笔记后端`);
+            
+            // 转发请求到灵枢笔记后端
+            const response = await axios.post('http://127.0.0.1:3001/api/unified-settings/reranking', req.body, {
+                headers: {
+                    'Authorization': req.headers.authorization,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            res.json(response.data);
+            
+        } catch (error) {
+            console.error('[FileSettings] 保存Reranking设置失败:', error);
+            if (error.response) {
+                res.status(error.response.status).json(error.response.data);
+            } else {
+                res.status(500).json({
+                    error: '保存Reranking设置失败'
+                });
+            }
+        }
+    }
 }
 
 module.exports = FileSettingsController; 
