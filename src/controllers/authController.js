@@ -60,7 +60,7 @@ class AuthController {
                 });
             }
 
-            const bcrypt = require('bcrypt');
+            const bcrypt = require('bcryptjs');
             const isPasswordValid = await bcrypt.compare(password, userWithPassword.password);
             if (!isPasswordValid) {
                 return res.status(401).json({
