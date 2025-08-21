@@ -1,26 +1,31 @@
-const db = require('./database');
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcrypt');
 
 class User {
-    // 初始化数据库表
-    static initTables() {
-        try {
-            // 创建用户表 (与Notebook LM兼容)
-            db.prepare(`
-                CREATE TABLE IF NOT EXISTS users (
-                    id TEXT PRIMARY KEY,
-                    email TEXT UNIQUE NOT NULL,
-                    username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `).run();
+    constructor() {
+        // 使用CSV账户系统
+        this.userDataPath = path.join(__dirname, '..', '..', 'user-data-v2');
+        this.usersCSVPath = path.join(this.userDataPath, 'users.csv');
+        
+        // 确保目录存在
+        this.ensureDirectory(this.userDataPath);
+        
+        // 初始化CSV文件
+        this.initCSVFile();
+    }
 
-            console.log('User表初始化成功');
-        } catch (error) {
-            console.error('User表初始化失败:', error);
-            throw error;
+    ensureDirectory(dirPath) {
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+        }
+    }
+
+    initCSVFile() {
+        if (!fs.existsSync(this.usersCSVPath)) {
+            const csvHeader = 'user_id,username,email,password,created_at,updated_at,status\n';
+            fs.writeFileSync(this.usersCSVPath, csvHeader, 'utf8');
+            console.log('[User-CSV] 用户CSV文件已初始化');
         }
     }
 
@@ -34,6 +39,8 @@ class User {
     // 创建新用户
     static async createUser({ email, username, password }) {
         try {
+            const user = new User();
+            
             // 检查邮箱是否已存在
             const existingUser = await this.findByEmail(email);
             if (existingUser) {
@@ -53,27 +60,110 @@ class User {
             // 生成用户ID
             const userId = this.generateId();
 
-            // 插入新用户
-            const stmt = db.prepare(`
-                INSERT INTO users (id, email, username, password, created_at, updated_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            `);
-            
-            stmt.run(userId, email, username, hashedPassword);
+            // 添加新用户到CSV
+            const newUser = {
+                user_id: userId,
+                username: username,
+                email: email,
+                password: hashedPassword,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                status: 'active'
+            };
 
-            // 返回用户信息 (不包含密码)
-            return await this.findById(userId);
+            const csvLine = `${userId},${username},${email},${hashedPassword},${newUser.created_at},${newUser.updated_at},active\n`;
+            fs.appendFileSync(user.usersCSVPath, csvLine, 'utf8');
+
+            console.log(`[User-CSV] 新用户已创建: ${userId} (${email})`);
+            
+            // 创建用户设置文件
+            await user.createUserSettingsFile(userId, username, email);
+            
+            return {
+                id: userId,
+                email: email,
+                username: username,
+                created_at: newUser.created_at,
+                updated_at: newUser.updated_at
+            };
         } catch (error) {
             console.error('创建用户错误:', error);
             throw error;
         }
     }
 
+    // 创建用户设置文件
+    async createUserSettingsFile(userId, username, email) {
+        const settingsPath = path.join(this.userDataPath, `${username}_settings.json`);
+        
+        const defaultSettings = {
+            user_info: {
+                user_id: userId,
+                username: username,
+                email: email
+            },
+            llm: {
+                provider: 'builtin',
+                model: 'builtin-free',
+                updated_at: new Date().toISOString()
+            },
+            caldav: {
+                username: '',
+                password: '',
+                serverUrl: '',
+                updated_at: new Date().toISOString()
+            },
+            imap: {
+                user: '',
+                host: '',
+                password: '',
+                port: 993,
+                tls: true,
+                updated_at: new Date().toISOString()
+            },
+            exchange: {
+                email: '',
+                password: '',
+                ewsUrl: '',
+                exchangeVersion: 'Exchange2013',
+                updated_at: new Date().toISOString()
+            },
+            imap_filter: {
+                sender_allowlist: [],
+                updated_at: new Date().toISOString()
+            }
+        };
+        
+        fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2), 'utf-8');
+        console.log(`[User-CSV] 用户设置文件已创建: ${settingsPath}`);
+    }
+
     // 根据ID查找用户
     static async findById(id) {
         try {
-            const stmt = db.prepare('SELECT id, email, username, created_at, updated_at FROM users WHERE id = ?');
-            return stmt.get(id);
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                return null;
+            }
+
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            if (lines.length <= 1) return null;
+
+            for (let i = 1; i < lines.length; i++) {
+                const [user_id, username, email, password, created_at, updated_at, status] = lines[i].split(',');
+                if (user_id === id) {
+                    return {
+                        id: user_id,
+                        email: email,
+                        username: username,
+                        created_at: created_at,
+                        updated_at: updated_at
+                    };
+                }
+            }
+            return null;
         } catch (error) {
             console.error('根据ID查找用户错误:', error);
             throw error;
@@ -83,8 +173,29 @@ class User {
     // 根据邮箱查找用户
     static async findByEmail(email) {
         try {
-            const stmt = db.prepare('SELECT id, email, username, created_at, updated_at FROM users WHERE email = ?');
-            return stmt.get(email);
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                return null;
+            }
+
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            if (lines.length <= 1) return null;
+
+            for (let i = 1; i < lines.length; i++) {
+                const [user_id, username, emailField, password, created_at, updated_at, status] = lines[i].split(',');
+                if (emailField === email) {
+                    return {
+                        id: user_id,
+                        email: emailField,
+                        username: username,
+                        created_at: created_at,
+                        updated_at: updated_at
+                    };
+                }
+            }
+            return null;
         } catch (error) {
             console.error('根据邮箱查找用户错误:', error);
             throw error;
@@ -94,8 +205,30 @@ class User {
     // 根据邮箱查找用户(包含密码，用于验证)
     static async findByEmailWithPassword(email) {
         try {
-            const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-            return stmt.get(email);
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                return null;
+            }
+
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            if (lines.length <= 1) return null;
+
+            for (let i = 1; i < lines.length; i++) {
+                const [user_id, username, emailField, password, created_at, updated_at, status] = lines[i].split(',');
+                if (emailField === email) {
+                    return {
+                        id: user_id,
+                        email: emailField,
+                        username: username,
+                        password: password,
+                        created_at: created_at,
+                        updated_at: updated_at
+                    };
+                }
+            }
+            return null;
         } catch (error) {
             console.error('根据邮箱查找用户(含密码)错误:', error);
             throw error;
@@ -105,8 +238,29 @@ class User {
     // 根据用户名查找用户
     static async findByUsername(username) {
         try {
-            const stmt = db.prepare('SELECT id, email, username, created_at, updated_at FROM users WHERE username = ?');
-            return stmt.get(username);
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                return null;
+            }
+
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            if (lines.length <= 1) return null;
+
+            for (let i = 1; i < lines.length; i++) {
+                const [user_id, usernameField, email, password, created_at, updated_at, status] = lines[i].split(',');
+                if (usernameField === username) {
+                    return {
+                        id: user_id,
+                        email: email,
+                        username: usernameField,
+                        created_at: created_at,
+                        updated_at: updated_at
+                    };
+                }
+            }
+            return null;
         } catch (error) {
             console.error('根据用户名查找用户错误:', error);
             throw error;
@@ -116,14 +270,23 @@ class User {
     // 验证用户密码
     static async validatePassword(userId, password) {
         try {
-            const stmt = db.prepare('SELECT password FROM users WHERE id = ?');
-            const user = stmt.get(userId);
-            
-            if (!user) {
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
                 return false;
             }
 
-            return await bcrypt.compare(password, user.password);
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            if (lines.length <= 1) return false;
+
+            for (let i = 1; i < lines.length; i++) {
+                const [user_id, username, email, hashedPassword, created_at, updated_at, status] = lines[i].split(',');
+                if (user_id === userId) {
+                    return await bcrypt.compare(password, hashedPassword);
+                }
+            }
+            return false;
         } catch (error) {
             console.error('验证密码错误:', error);
             throw error;
@@ -133,48 +296,47 @@ class User {
     // 更新用户信息
     static async updateUser(userId, { email, username, password }) {
         try {
-            const updates = [];
-            const values = [];
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                throw new Error('用户数据文件不存在');
+            }
 
-            if (email) {
-                // 检查邮箱是否被其他用户使用
-                const existingUser = await this.findByEmail(email);
-                if (existingUser && existingUser.id !== userId) {
-                    throw new Error('邮箱已被其他用户使用');
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            
+            if (lines.length <= 1) {
+                throw new Error('没有找到用户');
+            }
+
+            const headers = lines[0];
+            const updatedLines = [headers];
+            let userFound = false;
+
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(',');
+                if (parts[0] === userId) {
+                    userFound = true;
+                    
+                    // 更新字段
+                    if (email) parts[2] = email;
+                    if (username) parts[1] = username;
+                    if (password) {
+                        const saltRounds = 10;
+                        parts[3] = await bcrypt.hash(password, saltRounds);
+                    }
+                    parts[5] = new Date().toISOString();
+                    
+                    updatedLines.push(parts.join(','));
+                } else {
+                    updatedLines.push(lines[i]);
                 }
-                updates.push('email = ?');
-                values.push(email);
             }
 
-            if (username) {
-                // 检查用户名是否被其他用户使用
-                const existingUser = await this.findByUsername(username);
-                if (existingUser && existingUser.id !== userId) {
-                    throw new Error('用户名已被其他用户使用');
-                }
-                updates.push('username = ?');
-                values.push(username);
+            if (!userFound) {
+                throw new Error('用户不存在');
             }
 
-            if (password) {
-                // 哈希新密码
-                const saltRounds = 10;
-                const hashedPassword = await bcrypt.hash(password, saltRounds);
-                updates.push('password = ?');
-                values.push(hashedPassword);
-            }
-
-            if (updates.length === 0) {
-                throw new Error('没有提供要更新的字段');
-            }
-
-            updates.push('updated_at = CURRENT_TIMESTAMP');
-            values.push(userId);
-
-            const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
-            const stmt = db.prepare(sql);
-            stmt.run(...values);
-
+            fs.writeFileSync(user.usersCSVPath, updatedLines.join('\n'), 'utf8');
             return await this.findById(userId);
         } catch (error) {
             console.error('更新用户错误:', error);
@@ -185,10 +347,31 @@ class User {
     // 删除用户
     static async deleteUser(userId) {
         try {
-            const stmt = db.prepare('DELETE FROM users WHERE id = ?');
-            const result = stmt.run(userId);
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                return false;
+            }
+
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
             
-            return result.changes > 0;
+            if (lines.length <= 1) return false;
+
+            const headers = lines[0];
+            const updatedLines = [headers];
+            let userFound = false;
+
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(',');
+                if (parts[0] !== userId) {
+                    updatedLines.push(lines[i]);
+                } else {
+                    userFound = true;
+                }
+            }
+
+            fs.writeFileSync(user.usersCSVPath, updatedLines.join('\n'), 'utf8');
+            return userFound;
         } catch (error) {
             console.error('删除用户错误:', error);
             throw error;
@@ -198,17 +381,28 @@ class User {
     // 获取用户总数
     static async getUserCount() {
         try {
-            const stmt = db.prepare('SELECT COUNT(*) as count FROM users');
-            const result = stmt.get();
-            return result.count;
+            const user = new User();
+            if (!fs.existsSync(user.usersCSVPath)) {
+                return 0;
+            }
+
+            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
+            const lines = csvData.split('\n').filter(line => line.trim());
+            return Math.max(0, lines.length - 1); // 减去表头
         } catch (error) {
             console.error('获取用户总数错误:', error);
             throw error;
         }
     }
+
+    // 使用现有的CSV文件路径
+    static getCSVPath() {
+        const user = new User();
+        return user.usersCSVPath;
+    }
 }
 
-// 模块加载时初始化表
-User.initTables();
+// 不再初始化数据库表，直接使用CSV系统
+console.log('[User-CSV] 使用CSV账户系统');
 
 module.exports = User;
