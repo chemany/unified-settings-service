@@ -2,7 +2,7 @@
   "builtin_free": {
     "name": "内置免费模型",
     "provider": "builtin",
-    "api_key": "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",
+    "api_key": "*******",
     "base_url": "https://openrouter.ai/api/v1",
     "model_name": "deepseek/deepseek-chat-v3-0324:free",
     "temperature": 0.7,

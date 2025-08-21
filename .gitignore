@@ -1,0 +1,67 @@
+# 依赖文件
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境配置文件（包含敏感信息）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 数据库文件
+database/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# 日志文件
+*.log
+logs/
+service.log
+
+# 配置文件（包含API密钥等敏感信息）
+config/default-models.json
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 编辑器和IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 运行时文件
+*.pid
+*.seed
+*.pid.lock
+
+# 覆盖率报告
+coverage/
+.nyc_output/
+
+# 构建输出
+dist/
+build/
+.tmp/
+
+# 备份文件
+*.bak
+*.backup
