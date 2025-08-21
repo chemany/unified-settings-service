@@ -14,9 +14,16 @@ class FileSettingsController {
     static async getLlmSettings(req, res) {
         try {
             const userId = req.user.id;
-            console.log(`[FileSettings] 获取用户 ${userId} 的LLM设置`);
+            const appType = req.query.app || req.headers['x-app-type'];
             
-            const llmSettings = fileSettingsService.getUserLlmSettings(userId);
+            console.log(`[FileSettings] 获取用户 ${userId} 的LLM设置，应用类型: ${appType || '通用'}`);
+            
+            let llmSettings;
+            if (appType) {
+                llmSettings = await fileSettingsService.getAppLlmSettings(userId, appType);
+            } else {
+                llmSettings = fileSettingsService.getUserLlmSettings(userId);
+            }
             
             if (!llmSettings) {
                 return res.status(404).json({
