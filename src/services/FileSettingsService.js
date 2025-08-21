@@ -8,7 +8,12 @@ const path = require('path');
 
 class FileSettingsService {
     constructor() {
-        this.baseDir = path.join(__dirname, '../../user-settings');
+        // 支持环境变量配置存储路径
+        if (process.env.STORAGE_TYPE === 'nas' && process.env.NAS_PATH) {
+            this.baseDir = path.join(process.env.NAS_PATH, 'MindOcean/user-data/settings');
+        } else {
+            this.baseDir = path.join(__dirname, '../../user-settings');
+        }
         this.configDir = path.join(__dirname, '../../config');
         
         // 确保目录存在
@@ -30,9 +35,23 @@ class FileSettingsService {
      * 获取用户设置目录
      */
     getUserSettingsDir(userId) {
-        const userDir = path.join(this.baseDir, userId);
-        this.ensureDirectoryExists(userDir);
-        return userDir;
+        // 在NAS模式下，所有用户设置文件都在同一个目录下
+        // 格式为 {username}_settings.json
+        return this.baseDir;
+    }
+
+    /**
+     * 根据用户ID查找用户名
+     */
+    async getUsernameByUserId(userId) {
+        try {
+            const User = require('../models/User');
+            const user = await User.findById(userId);
+            return user ? user.username : null;
+        } catch (error) {
+            console.error(`[FileSettings] 查找用户名失败 ${userId}:`, error);
+            return null;
+        }
     }
 
     /**
@@ -72,6 +91,76 @@ class FileSettingsService {
     getDefaultModels() {
         const defaultModelsPath = path.join(this.configDir, 'default-models.json');
         return this.readJsonFile(defaultModelsPath, {});
+    }
+
+    /**
+     * 获取特定应用的LLM设置
+     */
+    async getAppLlmSettings(userId, appType) {
+        const userDir = this.getUserSettingsDir(userId);
+        
+        // 首先尝试通过用户ID找到用户名
+        const username = await this.getUsernameByUserId(userId);
+        let settingsPath = null;
+        
+        if (username) {
+            // 使用用户名构造文件路径
+            const expectedFile = `${username}_settings.json`;
+            const expectedPath = path.join(userDir, expectedFile);
+            
+            if (fs.existsSync(expectedPath)) {
+                settingsPath = expectedPath;
+                console.log(`[FileSettings] 通过用户名找到设置文件: ${expectedFile}`);
+            }
+        }
+        
+        if (!settingsPath) {
+            // 备选方案：遍历所有文件查找匹配的用户ID
+            const userFiles = fs.readdirSync(userDir).filter(file => file.endsWith('_settings.json'));
+            for (const file of userFiles) {
+                const filePath = path.join(userDir, file);
+                const fileContent = this.readJsonFile(filePath);
+                if (fileContent && fileContent.user_info && fileContent.user_info.user_id === userId) {
+                    settingsPath = filePath;
+                    console.log(`[FileSettings] 通过遍历找到设置文件: ${file}`);
+                    break;
+                }
+            }
+        }
+        
+        // 首先尝试从用户的主设置文件读取
+        const userSettings = this.readJsonFile(settingsPath);
+        
+        if (userSettings) {
+            const appSettingKey = `${appType}_llm`;
+            const appLlmSettings = userSettings[appSettingKey];
+            
+            if (appLlmSettings) {
+                console.log(`[FileSettings] 找到应用 ${appType} 的LLM设置`);
+                
+                // 如果是使用默认配置
+                if ((appLlmSettings.provider === 'builtin' || appLlmSettings.provider === `builtin-${appType}`) && 
+                    (appLlmSettings.api_key === 'USE_DEFAULT_CONFIG' || appLlmSettings.model === 'USE_DEFAULT_CONFIG')) {
+                    console.log(`[FileSettings] 应用 ${appType} 使用内置模型，返回专用默认配置`);
+                    const defaultModels = this.getDefaultModels();
+                    const appSpecificModel = defaultModels[`builtin-${appType}`];
+                    
+                    if (appSpecificModel) {
+                        console.log(`[FileSettings] 返回 ${appType} 专用模型配置`);
+                        return appSpecificModel;
+                    } else {
+                        console.log(`[FileSettings] 未找到 ${appType} 专用模型，使用通用默认配置`);
+                        return defaultModels.builtin_free || null;
+                    }
+                }
+                
+                return appLlmSettings;
+            }
+        }
+        
+        // 如果没有找到应用特定设置，返回通用设置
+        console.log(`[FileSettings] 未找到应用 ${appType} 的专用LLM设置，回退到通用设置`);
+        return this.getUserLlmSettings(userId);
     }
 
     /**
