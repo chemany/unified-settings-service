@@ -62,6 +62,24 @@ router.post('/caldav', FileSettingsController.saveCalDAVSettings);
 router.get('/default-models', FileSettingsController.getDefaultModels);
 
 /**
+ * Embedding设置相关路由
+ */
+// 获取Embedding设置
+router.get('/embedding', FileSettingsController.getEmbeddingSettings);
+
+// 保存Embedding设置
+router.post('/embedding', FileSettingsController.saveEmbeddingSettings);
+
+/**
+ * Reranking设置相关路由
+ */
+// 获取Reranking设置
+router.get('/reranking', FileSettingsController.getRerankingSettings);
+
+// 保存Reranking设置
+router.post('/reranking', FileSettingsController.saveRerankingSettings);
+
+/**
  * 用户管理相关路由
  */
 // 获取用户设置概览
