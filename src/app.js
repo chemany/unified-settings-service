@@ -51,7 +51,7 @@ const limiter = rateLimit({
         error: '请求太频繁，请稍后再试'
     }
 });
-app.use(limiter);
+//app.use(limiter);
 
 // 解析 JSON
 app.use(express.json({ limit: '10mb' }));
