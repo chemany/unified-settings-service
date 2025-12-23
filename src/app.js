@@ -8,50 +8,18 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const settingsRoutes = require('./routes/settings');
 const fileSettingsRoutes = require('./routes/fileSettings');
-
-// 初始化数据库 - 已改为文件存储，暂时禁用
-// require('./models/database');
-// require('./models/User');
-// require('./models/Settings');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 
 // 安全中间件
 app.use(helmet());
 
-// 跨域设置
+// 跨域设置 - 允许所有源
 app.use(cors({
-    origin: function (origin, callback) {
-        // 允许的源列表
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'http://localhost:3001', 
-            'http://localhost:5173',
-            'http://localhost:3002',
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:3001',
-            'http://127.0.0.1:5173'
-        ];
-        
-        // 允许本地文件访问（origin为null）
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(null, true); // 暂时允许所有源，生产环境需要限制
-        }
-    },
+    origin: true,
     credentials: true
 }));
-
-// 速率限制
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 分钟
-    max: 300, // 限制每个 IP 15分钟内最多 300 个请求 (从100提高到300)
-    message: {
-        error: '请求太频繁，请稍后再试'
-    }
-});
-//app.use(limiter);
 
 // 解析 JSON
 app.use(express.json({ limit: '10mb' }));
@@ -70,6 +38,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/file-settings', fileSettingsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 错误处理
 app.use('*', (req, res) => {
