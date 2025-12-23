@@ -1,0 +1,42 @@
+{
+  "builtin_free_neuralink": {
+    "name": "灵枢笔记专用模型",
+    "provider": "builtin",
+    "api_key": "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",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model_name": "x-ai/grok-4.1-fast:free",
+    "temperature": 0.6,
+    "max_tokens": 20000,
+    "description": "为灵枢笔记优化的AI模型，专注于知识管理和笔记整理，临时使用ModelScope API",
+    "version": "2.0.1",
+    "last_updated": "2025-08-27T03:20:00.000Z",
+    "features": ["知识图谱", "智能摘要", "概念关联"],
+    "system_prompt": "你是灵枢笔记的AI助手，专门帮助用户整理知识、建立概念关联和生成智能摘要。"
+  },
+  "builtin_free_tidelog": {
+    "name": "潮汐志专用模型", 
+    "provider": "builtin",
+    "api_key": "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",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model_name": "x-ai/grok-4.1-fast:free",
+    "temperature": 0.8,
+    "max_tokens": 20000,
+    "description": "为潮汐志优化的AI模型，专注于情感理解和个人成长记录",
+    "version": "2.0.0",
+    "last_updated": "2025-01-21T10:00:00.000Z", 
+    "features": ["情感分析", "成长轨迹", "心理支持"],
+    "system_prompt": "你是潮汐志的AI助手，专门帮助用户记录情感变化、分析个人成长和提供心理支持。"
+  },
+  "builtin_free": {
+    "name": "内置免费模型",
+    "provider": "builtin", 
+    "api_key": "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",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model_name": "z-ai/glm-4.5-air:free",
+    "temperature": 0.7,
+    "max_tokens": 20000,
+    "description": "通用免费模型",
+    "version": "2.0.0",
+    "last_updated": "2025-01-21T10:00:00.000Z"
+  }
+} 

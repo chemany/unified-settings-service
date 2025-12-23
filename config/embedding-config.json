@@ -1,0 +1,10 @@
+{
+  "provider": "siliconflow",
+  "apiKey": "sk-tzlrvglflwxfthglqtqvahejwghbsfigpdanvielhafvorhv",
+  "model": "BAAI/bge-m3",
+  "apiBaseUrl": "https://api.siliconflow.cn/v1",
+  "encodingFormat": "float",
+  "timeout": 30,
+  "enabled": true,
+  "description": "全局向量化服务配置，所有用户共享此配置进行文档向量化"
+}

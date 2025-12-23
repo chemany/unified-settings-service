@@ -5,16 +5,17 @@ const bcrypt = require('bcryptjs');
 class User {
     constructor() {
         // 使用CSV账户系统 - 支持环境变量配置
-        const basePath = process.env.STORAGE_TYPE === 'nas' && process.env.NAS_PATH 
-            ? process.env.NAS_PATH + '/MindOcean/user-data'
-            : path.join(__dirname, '..', '..', 'user-data-v2');
+        let basePath;
+        if (process.env.STORAGE_TYPE === 'local' && process.env.LOCAL_PATH) {
+            basePath = process.env.LOCAL_PATH + '/user-data';
+        } else if (process.env.STORAGE_TYPE === 'nas' && process.env.NAS_PATH) {
+            basePath = process.env.NAS_PATH + '/MindOcean/user-data';
+        } else {
+            basePath = path.join(__dirname, '..', '..', 'user-data-v2');
+        }
         
         this.userDataPath = path.join(basePath, 'settings');
         this.usersCSVPath = path.join(this.userDataPath, 'users.csv');
-        
-        // 确保目录存在
-        this.ensureDirectory(this.userDataPath);
-        
         // 初始化CSV文件
         this.initCSVFile();
     }

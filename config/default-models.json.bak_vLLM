@@ -1,0 +1,30 @@
+{
+  "builtin_free_siyuan": {
+    "name": "思源笔记专用模型",
+    "provider": "builtin",
+    "api_key": "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",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model_name": "amazon/nova-2-lite-v1:free",
+    "temperature": 0.6,
+    "max_tokens": 20000,
+    "description": "为思源笔记优化的AI模型，使用OpenRouter Llama 3.2免费模型",
+    "version": "2.0.4",
+    "last_updated": "2025-12-01T08:00:00.000Z",
+    "features": ["知识图谱", "智能摘要", "概念关联", "文档分析"],
+    "system_prompt": "你是思源笔记的AI助手，专门帮助用户整理知识、建立概念关联和生成智能摘要。"
+  },
+  "builtin_free_tidelog": {
+    "name": "潮汐志专用模型",
+    "provider": "builtin",
+    "api_key": "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",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model_name": "amazon/nova-2-lite-v1:free",
+    "temperature": 0.8,
+    "max_tokens": 4000,
+    "description": "为潮汐志优化的AI模型，使用OpenRouter Llama 3.2免费模型",
+    "version": "2.0.1",
+    "last_updated": "2025-11-26T06:00:00.000Z",
+    "features": ["情感分析", "成长轨迹", "心理支持"],
+    "system_prompt": "你是潮汐志的AI助手，专门帮助用户记录情感变化、分析个人成长和提供心理支持。"
+  }
+}
