@@ -1,0 +1,8 @@
+{
+  "endpoint": "http://jason.cheman.top:10096",
+  "timeout": 30,
+  "language": "zh",
+  "description": "FunASR 语音识别服务配置",
+  "version": "1.0.0",
+  "last_updated": "2025-12-24T10:00:00.000Z"
+}
