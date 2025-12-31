@@ -35,8 +35,12 @@ router.post('/chat', auth, async (req, res) => {
         loadDefaultModels();
 
         // Determine which model to use
-        // Use 'builtin_free_neuralink' as default
-        let modelConfig = defaultModels['builtin_free_neuralink'] || defaultModels['builtin_free'];
+        // Try siyuan model first, then tidelog, then any available builtin model
+        let modelConfig = 
+            defaultModels['builtin_free_siyuan'] || 
+            defaultModels['builtin_free_tidelog'] ||
+            Object.values(defaultModels).find(m => m.provider === 'openai') ||
+            defaultModels['builtin_free'];
 
         if (!modelConfig) {
             return res.status(500).json({ success: false, msg: 'Builtin model configuration not found' });
