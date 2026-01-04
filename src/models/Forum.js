@@ -51,6 +51,9 @@ class Forum {
             if (!colNames.includes('attachments')) {
                 db.prepare("ALTER TABLE forum_posts ADD COLUMN attachments TEXT DEFAULT '[]'").run();
             }
+            if (!colNames.includes('is_essence')) {
+                db.prepare("ALTER TABLE forum_posts ADD COLUMN is_essence INTEGER DEFAULT 0").run();
+            }
 
             console.log('Forum表初始化/升级成功');
         } catch (error) {
@@ -80,7 +83,7 @@ class Forum {
         return null;
     }
 
-    static async listPosts({ category, search, limit = 20, offset = 0 }) {
+    static async listPosts({ category, search, sort = 'latest', limit = 20, offset = 0 }) {
         let query = "SELECT * FROM forum_posts WHERE status = 'active'";
         const params = [];
 
@@ -94,7 +97,26 @@ class Forum {
             params.push(`%${search}%`, `%${search}%`);
         }
 
-        query += ' ORDER BY is_top DESC, created_at DESC LIMIT ? OFFSET ?';
+        // 精华帖子筛选
+        if (sort === 'essence') {
+            query += ' AND is_essence = 1';
+        }
+
+        // 排序逻辑
+        switch (sort) {
+            case 'hot':
+                // 最热：按浏览量 + 回复数排序
+                query += ' ORDER BY is_top DESC, (views + (SELECT COUNT(*) FROM forum_comments WHERE post_id = forum_posts.id)) DESC, created_at DESC';
+                break;
+            case 'essence':
+            case 'latest':
+            default:
+                // 默认按发布时间倒序
+                query += ' ORDER BY is_top DESC, created_at DESC';
+                break;
+        }
+
+        query += ' LIMIT ? OFFSET ?';
         params.push(Math.floor(limit), Math.floor(offset));
 
         const stmt = db.prepare(query);
