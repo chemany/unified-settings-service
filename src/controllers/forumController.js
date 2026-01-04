@@ -6,10 +6,11 @@ class ForumController {
     static async getPosts(req, res) {
         try {
             console.log(`[Forum] GET /posts - Query: ${JSON.stringify(req.query)}`);
-            const { category, search, limit, offset } = req.query;
+            const { category, search, sort, limit, offset } = req.query;
             const posts = await Forum.listPosts({
                 category,
                 search,
+                sort: sort || 'latest',
                 limit: parseInt(limit) || 20,
                 offset: parseInt(offset) || 0
             });
