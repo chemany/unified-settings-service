@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const settingsRoutes = require('./routes/settings');
 const fileSettingsRoutes = require('./routes/fileSettings');
 const aiRoutes = require('./routes/ai');
+const forumRoutes = require('./routes/forum');
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/file-settings', fileSettingsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/forum', forumRoutes);
 
 // 404 错误处理
 app.use('*', (req, res) => {
