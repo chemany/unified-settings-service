@@ -57,4 +57,49 @@ router.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
     });
 });
 
+// --- 用户相关接口 ---
+
+// 获取当前用户信息（包含统计信息）
+router.get('/user/me', authenticateToken, forumController.getCurrentUser);
+
+// 获取指定用户信息（公开）
+router.get('/user/:id', forumController.getUserById);
+
+// 获取当前用户发布的帖子
+router.get('/user/me/posts', authenticateToken, forumController.getMyPosts);
+
+// 获取当前用户点赞的帖子
+router.get('/user/me/likes', authenticateToken, forumController.getMyLikedPosts);
+
+// 获取当前用户收藏的帖子
+router.get('/user/me/collections', authenticateToken, forumController.getMyCollectedPosts);
+
+// --- 互动接口 ---
+
+// 点赞/取消点赞
+router.post('/posts/:id/like', authenticateToken, forumController.toggleLike);
+
+// 收藏/取消收藏
+router.post('/posts/:id/collect', authenticateToken, forumController.toggleCollect);
+
+// 获取帖子互动状态（当前用户是否点赞/收藏）
+router.get('/posts/:id/status', authenticateToken, forumController.getPostStatus);
+
+// --- 站内消息接口 ---
+
+// 发送站内消息
+router.post('/messages/send', authenticateToken, forumController.sendMessage);
+
+// 获取消息联系人列表
+router.get('/messages/contacts', authenticateToken, forumController.getMessageContacts);
+
+// 获取与特定用户的对话
+router.get('/messages/conversation/:otherId', authenticateToken, forumController.getConversation);
+
+// 获取未读消息数量
+router.get('/messages/unread-count', authenticateToken, forumController.getUnreadCount);
+
+// 标记对话为已读
+router.post('/messages/read/:otherId', authenticateToken, forumController.markConversationAsRead);
+
 module.exports = router;
