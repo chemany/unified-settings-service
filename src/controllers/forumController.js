@@ -221,6 +221,21 @@ class ForumController {
         }
     }
 
+    // 获取指定用户发布的帖子（公开）
+    static async getUserPostsById(req, res) {
+        try {
+            const { id } = req.params;
+            const limit = parseInt(req.query.limit) || 20;
+            const offset = parseInt(req.query.offset) || 0;
+
+            const posts = await Forum.getUserPosts(id, limit, offset);
+            res.json({ posts });
+        } catch (error) {
+            console.error('获取用户帖子错误:', error);
+            res.status(500).json({ error: '获取帖子失败' });
+        }
+    }
+
     // 获取当前用户发布的帖子
     static async getMyPosts(req, res) {
         try {
