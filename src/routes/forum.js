@@ -65,6 +65,9 @@ router.get('/user/me', authenticateToken, forumController.getCurrentUser);
 // 获取指定用户信息（公开）
 router.get('/user/:id', forumController.getUserById);
 
+// 获取指定用户发布的帖子（公开）
+router.get('/user/:id/posts', forumController.getUserPostsById);
+
 // 获取当前用户发布的帖子
 router.get('/user/me/posts', authenticateToken, forumController.getMyPosts);
 
