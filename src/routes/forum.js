@@ -39,6 +39,7 @@ router.get('/posts/:id', forumController.getPost);
 
 // 需要登录的接口
 router.post('/posts', authenticateToken, forumController.createPost);
+router.delete('/posts/:id', authenticateToken, forumController.deletePost); // Add delete route
 router.post('/comments', authenticateToken, forumController.createComment);
 
 // 附件上传接口
@@ -76,6 +77,18 @@ router.get('/user/me/likes', authenticateToken, forumController.getMyLikedPosts)
 
 // 获取当前用户收藏的帖子
 router.get('/user/me/collections', authenticateToken, forumController.getMyCollectedPosts);
+
+// 更新当前用户擅长领域标签
+router.put('/user/me/expertise', authenticateToken, forumController.updateExpertiseTags);
+
+// 更新当前用户个人简介
+router.put('/user/me/bio', authenticateToken, forumController.updateBio);
+
+// 获取可用的擅长领域选项（公开）
+router.get('/expertise-options', forumController.getExpertiseOptions);
+
+// 获取等级配置（公开）
+router.get('/level-config', forumController.getLevelConfig);
 
 // --- 互动接口 ---
 

@@ -65,15 +65,42 @@ class ForumController {
         }
     }
 
-    // 发布评论
+    // 删除帖子
+    static async deletePost(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id; // From auth middleware
+
+            const post = await Forum.getPostById(id);
+            if (!post) {
+                return res.status(404).json({ error: '帖子不存在' });
+            }
+
+            // 权限检查：只有作者可以删除 (后续可扩展管理员权限)
+            if (String(post.user_id) !== String(userId)) {
+                return res.status(403).json({ error: '无权删除此帖子' });
+            }
+
+            await Forum.deletePost(id);
+            res.json({ success: true, message: '帖子已删除' });
+        } catch (error) {
+            console.error('删除帖子错误:', error);
+            res.status(500).json({ error: '删除失败' });
+        }
+    }
+
+    // 发布评论（支持嵌套回复）
     static async createComment(req, res) {
         try {
-            const { postId, content } = req.body;
+            const { postId, content, parentCommentId, replyToUserId, replyToUserName } = req.body;
             const comment = await Forum.createComment({
                 postId,
                 userId: req.user.id,
                 authorName: req.user.username,
-                content
+                content,
+                parentCommentId: parentCommentId || null,
+                replyToUserId: replyToUserId || null,
+                replyToUserName: replyToUserName || null
             });
             res.status(201).json({ message: '回复成功', comment });
         } catch (error) {
@@ -172,18 +199,33 @@ class ForumController {
             const userId = req.user.id;
             const username = req.user.username || req.user.email;
 
-            const [postCount, likeCount, collectCount, receivedLikes] = await Promise.all([
+            const [postCount, likeCount, collectCount, receivedLikes, commentCount, profile, joinDate] = await Promise.all([
                 Forum.getUserPostCount(userId),
                 Forum.getUserLikeCount(userId),
                 Forum.getUserCollectCount(userId),
-                Forum.getUserReceivedLikes(userId)
+                Forum.getUserReceivedLikes(userId),
+                Forum.getUserCommentCount(userId),
+                Forum.getUserProfile(userId),
+                Forum.getUserJoinDate(userId)
             ]);
 
             res.json({
                 id: userId,
                 username,
+                joinDate,
+                profile: {
+                    points: profile.points,
+                    level: profile.level,
+                    levelTitle: profile.levelTitle,
+                    levelIcon: profile.levelIcon,
+                    nextLevelPoints: profile.nextLevelPoints,
+                    currentLevelMinPoints: profile.currentLevelMinPoints,
+                    expertiseTags: profile.expertise_tags,
+                    bio: profile.bio
+                },
                 stats: {
                     posts: postCount,
+                    comments: commentCount,
                     likesGiven: likeCount,
                     collections: collectCount,
                     receivedLikes
@@ -200,18 +242,33 @@ class ForumController {
         try {
             const { id } = req.params;
 
-            // 从 token 中获取当前用户（如果有登录）
-            const currentUserId = req.user?.id;
-
-            const [postCount, receivedLikes] = await Promise.all([
+            const [postCount, receivedLikes, commentCount, profile, joinDate] = await Promise.all([
                 Forum.getUserPostCount(id),
-                Forum.getUserReceivedLikes(id)
+                Forum.getUserReceivedLikes(id),
+                Forum.getUserCommentCount(id),
+                Forum.getUserProfile(id),
+                Forum.getUserJoinDate(id)
             ]);
+
+            // 从帖子中获取用户名
+            const userPost = await Forum.getUserPosts(id, 1, 0);
+            const username = userPost.length > 0 ? userPost[0].author_name : `用户${id.slice(-6)}`;
 
             res.json({
                 id,
+                username,
+                joinDate,
+                profile: {
+                    points: profile.points,
+                    level: profile.level,
+                    levelTitle: profile.levelTitle,
+                    levelIcon: profile.levelIcon,
+                    expertiseTags: profile.expertise_tags,
+                    bio: profile.bio
+                },
                 stats: {
                     posts: postCount,
+                    comments: commentCount,
                     receivedLikes
                 }
             });
@@ -361,6 +418,50 @@ class ForumController {
             console.error('标记已读错误:', error);
             res.status(500).json({ error: '操作失败' });
         }
+    }
+
+    // --- 用户资料更新接口 ---
+
+    // 更新擅长领域标签
+    static async updateExpertiseTags(req, res) {
+        try {
+            const userId = req.user.id;
+            const { tags } = req.body;
+
+            if (!Array.isArray(tags)) {
+                return res.status(400).json({ error: '标签格式错误' });
+            }
+
+            const updatedTags = await Forum.updateExpertiseTags(userId, tags);
+            res.json({ success: true, tags: updatedTags });
+        } catch (error) {
+            console.error('更新标签错误:', error);
+            res.status(500).json({ error: '更新失败' });
+        }
+    }
+
+    // 更新个人简介
+    static async updateBio(req, res) {
+        try {
+            const userId = req.user.id;
+            const { bio } = req.body;
+
+            const updatedBio = await Forum.updateBio(userId, bio || '');
+            res.json({ success: true, bio: updatedBio });
+        } catch (error) {
+            console.error('更新简介错误:', error);
+            res.status(500).json({ error: '更新失败' });
+        }
+    }
+
+    // 获取可用的擅长领域选项
+    static async getExpertiseOptions(req, res) {
+        res.json({ options: Forum.EXPERTISE_OPTIONS });
+    }
+
+    // 获取等级配置
+    static async getLevelConfig(req, res) {
+        res.json({ levels: Forum.LEVEL_CONFIG, rules: Forum.POINTS_RULES });
     }
 }
 
