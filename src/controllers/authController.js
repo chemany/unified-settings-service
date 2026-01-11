@@ -197,6 +197,9 @@ class AuthController {
                 });
             }
 
+            // 添加 role 信息
+            user.role = req.user.role || 'user';
+
             res.json({
                 user: user
             });

@@ -6,10 +6,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// 附件存储配置 (NAS WebDAV 挂载路径 - 已切换到独立挂载点避免覆盖本地数据)
-const NAS_ATTACHMENT_PATH = '/mnt/nas_jason/sata12-18153517921/MindOcean/attachments';
+// 附件存储配置 (优先使用本地目录，解决 NAS 权限问题)
+const NAS_ATTACHMENT_PATH = '/root/code/cheman.top/notepads/attachments';
 
-// 确保目录存在 (davfs 挂载点可能需要权限或已存在)
+// 确保目录存在
 try {
     if (!fs.existsSync(NAS_ATTACHMENT_PATH)) {
         fs.mkdirSync(NAS_ATTACHMENT_PATH, { recursive: true });
@@ -40,6 +40,8 @@ router.get('/posts/:id', forumController.getPost);
 // 需要登录的接口
 router.post('/posts', authenticateToken, forumController.createPost);
 router.delete('/posts/:id', authenticateToken, forumController.deletePost); // Add delete route
+router.put('/posts/:id', authenticateToken, forumController.updatePost);
+router.delete('/posts/:id', authenticateToken, forumController.deletePost);
 router.post('/comments', authenticateToken, forumController.createComment);
 
 // 附件上传接口
@@ -55,6 +57,32 @@ router.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
     res.json({
         url: fileUrl,
         name: originalName
+    });
+});
+
+// 附件删除接口（用于清理未提交的附件）
+router.delete('/attachment', authenticateToken, (req, res) => {
+    const { url } = req.body;
+    if (!url || !url.startsWith('/attachments/')) {
+        return res.status(400).json({ error: '无效的附件路径' });
+    }
+
+    // 从 URL 提取文件名
+    const filename = url.replace('/attachments/', '');
+    // 防止路径遍历攻击
+    if (filename.includes('..') || filename.includes('/')) {
+        return res.status(400).json({ error: '无效的文件名' });
+    }
+
+    const filePath = path.join(NAS_ATTACHMENT_PATH, filename);
+
+    fs.unlink(filePath, (err) => {
+        if (err) {
+            console.warn('删除附件失败:', err.message);
+            // 文件不存在也返回成功（幂等性）
+            return res.json({ success: true, message: '附件已删除或不存在' });
+        }
+        res.json({ success: true, message: '附件已删除' });
     });
 });
 
@@ -101,6 +129,9 @@ router.post('/posts/:id/collect', authenticateToken, forumController.toggleColle
 // 获取帖子互动状态（当前用户是否点赞/收藏）
 router.get('/posts/:id/status', authenticateToken, forumController.getPostStatus);
 
+// 批量获取帖子互动状态
+router.get('/posts-status/batch', authenticateToken, forumController.getBatchPostStatus);
+
 // --- 站内消息接口 ---
 
 // 发送站内消息
@@ -117,5 +148,37 @@ router.get('/messages/unread-count', authenticateToken, forumController.getUnrea
 
 // 标记对话为已读
 router.post('/messages/read/:otherId', authenticateToken, forumController.markConversationAsRead);
+
+// 置顶/取消置顶帖子（仅管理员）
+router.post('/posts/:id/pin', authenticateToken, async (req, res) => {
+    try {
+        // 检查是否为管理员
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: '无权限操作' });
+        }
+
+        const { id } = req.params;
+        const db = require('../models/database');
+
+        // 获取当前置顶状态
+        const post = db.prepare('SELECT is_top FROM forum_posts WHERE id = ?').get(id);
+        if (!post) {
+            return res.status(404).json({ error: '帖子不存在' });
+        }
+
+        // 切换置顶状态
+        const newStatus = post.is_top ? 0 : 1;
+        db.prepare('UPDATE forum_posts SET is_top = ? WHERE id = ?').run(newStatus, id);
+
+        res.json({
+            success: true,
+            isPinned: newStatus === 1,
+            message: newStatus ? '帖子已置顶' : '已取消置顶'
+        });
+    } catch (error) {
+        console.error('置顶操作错误:', error);
+        res.status(500).json({ error: '操作失败' });
+    }
+});
 
 module.exports = router;
