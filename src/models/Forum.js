@@ -235,12 +235,6 @@ class Forum {
         return null;
     }
 
-    static async deletePost(id) {
-        // 由于设置了 ON DELETE CASCADE，关联的评论、点赞、收藏会自动删除
-        db.prepare('DELETE FROM forum_posts WHERE id = ?').run(id);
-        return true;
-    }
-
     static async listPosts({ category, search, sort = 'latest', limit = 20, offset = 0 }) {
         let query = "SELECT * FROM forum_posts WHERE status = 'active'";
         const params = [];
@@ -318,7 +312,6 @@ class Forum {
         db.prepare('UPDATE forum_posts SET views = views + 1 WHERE id = ?').run(id);
     }
 
-    // --- 评论操作（支持嵌套评论/楼中楼）---
 
     static async createComment({ postId, userId, authorName, content, parentCommentId = null, replyToUserId = null, replyToUserName = null }) {
         let depth = 0;
@@ -336,6 +329,35 @@ class Forum {
                 }
             }
         }
+    static async updatePost(id, { title, content, category, tags, type, attachments }) {
+        const stmt = db.prepare(`
+            UPDATE forum_posts
+            SET title = :title, 
+                content = :content, 
+                category = :category, 
+                tags = :tags, 
+                type = :type, 
+                attachments = :attachments, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        `);
+        return stmt.run({
+            title: title || '',
+            content: content || '',
+            category: category || 'all',
+            tags: JSON.stringify(tags || []),
+            type: type || 'help',
+            attachments: JSON.stringify(attachments || []),
+            id: Number(id)
+        });
+    }
+
+    static async deletePost(id) {
+        // 使用软删除
+        return db.prepare("UPDATE forum_posts SET status = 'deleted' WHERE id = ?").run(id);
+    }
+
+    // --- 评论操作 ---
 
         const stmt = db.prepare(`
             INSERT INTO forum_comments(post_id, user_id, author_name, content, parent_comment_id, reply_to_user_id, reply_to_user_name, depth)
@@ -487,6 +509,24 @@ class Forum {
         }));
     }
 
+    // 获取用户基本信息（从CSV用户系统）
+    static async getUserBasicInfo(userId) {
+        // 优先从CSV用户系统获取
+        try {
+            const User = require('./User');
+            const user = await User.findById(userId);
+            if (user) {
+                return user;
+            }
+        } catch (e) {
+            console.log('[Forum] CSV用户查询失败，尝试数据库:', e.message);
+        }
+
+        // 回退到数据库查询
+        const user = db.prepare("SELECT id, username, email FROM users WHERE id = ?").get(userId);
+        return user;
+    }
+
     static async getUserPostCount(userId) {
         const result = db.prepare("SELECT COUNT(*) as count FROM forum_posts WHERE user_id = ? AND status = 'active'").get(userId);
         return result ? result.count : 0;
@@ -561,7 +601,6 @@ class Forum {
         return messages;
     }
 
-    // 获取与特定用户的对话
     static async getConversation(userId, otherUserId, limit = 50, offset = 0) {
         const messages = db.prepare(`
             SELECT m.*,
@@ -597,6 +636,8 @@ class Forum {
 
     // 获取所有对话联系人（最后一条消息）
     static async getMessageContacts(userId) {
+        const User = require('./User');
+
         // 获取每个联系人的最后一条消息
         const messages = db.prepare(`
             SELECT m.*,
@@ -611,8 +652,57 @@ class Forum {
                 WHEN m.sender_id = ? THEN m.receiver_id
                 ELSE m.sender_id
             END
+            SELECT m.*
+            FROM forum_messages m
+            INNER JOIN (
+                SELECT MAX(id) as max_id
+                FROM forum_messages
+                WHERE receiver_id = ? OR sender_id = ?
+                GROUP BY CASE
+                    WHEN sender_id = ? THEN receiver_id
+                    ELSE sender_id
+                END
+            ) latest ON m.id = latest.max_id
             ORDER BY m.created_at DESC
                 `).all(userId, userId, userId);
+
+        // 从CSV获取用户名
+        for (const msg of messages) {
+            const sender = await User.findById(msg.sender_id);
+            const receiver = await User.findById(msg.receiver_id);
+            msg.sender_name = sender?.username || '用户';
+            msg.receiver_name = receiver?.username || '用户';
+        }
+
+        return messages;
+    }
+
+    static async getConversation(userId, otherUserId, limit = 50, offset = 0) {
+        const User = require('./User');
+
+        const messages = db.prepare(`
+            SELECT m.*
+            FROM forum_messages m
+            WHERE (m.sender_id = ? AND m.receiver_id = ?)
+               OR (m.sender_id = ? AND m.receiver_id = ?)
+            ORDER BY m.created_at ASC
+            LIMIT ? OFFSET ?
+        `).all(userId, otherUserId, otherUserId, userId, Math.floor(limit), Math.floor(offset));
+
+        // 从CSV获取用户名
+        const userCache = {};
+        for (const msg of messages) {
+            if (!userCache[msg.sender_id]) {
+                const sender = await User.findById(msg.sender_id);
+                userCache[msg.sender_id] = sender?.username || '用户';
+            }
+            if (!userCache[msg.receiver_id]) {
+                const receiver = await User.findById(msg.receiver_id);
+                userCache[msg.receiver_id] = receiver?.username || '用户';
+            }
+            msg.sender_name = userCache[msg.sender_id];
+            msg.receiver_name = userCache[msg.receiver_id];
+        }
 
         return messages;
     }

@@ -30,6 +30,19 @@ const auth = async (req, res, next) => {
             };
         }
 
+        // 从数据库获取用户角色
+        try {
+            const db = require('../models/database');
+            const dbUser = db.prepare('SELECT role FROM users WHERE id = ? OR email = ?').get(user.id, user.email);
+            if (dbUser && dbUser.role) {
+                user.role = dbUser.role;
+            } else {
+                user.role = 'user';
+            }
+        } catch (e) {
+            user.role = 'user';
+        }
+
         // 将用户信息添加到请求对象
         req.user = user;
         next();

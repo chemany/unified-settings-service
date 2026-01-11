@@ -71,6 +71,14 @@ class ForumController {
             const { id } = req.params;
             const userId = req.user.id; // From auth middleware
 
+    // 更新帖子
+    static async updatePost(req, res) {
+        try {
+            const { id } = req.params;
+            const { title, content, category, tags, type, attachments } = req.body;
+            const userId = req.user.id;
+
+            // 检查帖子是否存在及所有权
             const post = await Forum.getPostById(id);
             if (!post) {
                 return res.status(404).json({ error: '帖子不存在' });
@@ -78,6 +86,31 @@ class ForumController {
 
             // 权限检查：只有作者可以删除 (后续可扩展管理员权限)
             if (String(post.user_id) !== String(userId)) {
+            if (post.user_id !== userId && req.user.role !== 'admin') {
+                return res.status(403).json({ error: '无权编辑此帖子' });
+            }
+
+            await Forum.updatePost(id, { title, content, category, tags, type, attachments });
+            res.json({ success: true, message: '帖子更新成功' });
+        } catch (error) {
+            console.error('更新帖子错误:', error);
+            res.status(500).json({ error: '更新帖子失败' });
+        }
+    }
+
+    // 删除帖子
+    static async deletePost(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // 检查帖子是否存在及所有权
+            const post = await Forum.getPostById(id);
+            if (!post) {
+                return res.status(404).json({ error: '帖子不存在' });
+            }
+
+            if (post.user_id !== userId && req.user.role !== 'admin') {
                 return res.status(403).json({ error: '无权删除此帖子' });
             }
 
@@ -89,7 +122,11 @@ class ForumController {
         }
     }
 
-    // 发布评论（支持嵌套回复）
+            res.status(500).json({ error: '删除帖子失败' });
+        }
+    }
+
+    // 发布评论
     static async createComment(req, res) {
         try {
             const { postId, content, parentCommentId, replyToUserId, replyToUserName } = req.body;
@@ -164,6 +201,34 @@ class ForumController {
         } catch (error) {
             console.error('获取状态错误:', error);
             res.status(500).json({ error: '获取状态失败' });
+        }
+    }
+
+    // 批量获取帖子互动状态
+    static async getBatchPostStatus(req, res) {
+        try {
+            const { ids } = req.query;
+            const userId = req.user?.id;
+
+            if (!userId || !ids) {
+                return res.json({});
+            }
+
+            const idArray = ids.split(',').map(id => parseInt(id));
+            const results = {};
+
+            await Promise.all(idArray.map(async (id) => {
+                const [liked, collected] = await Promise.all([
+                    Forum.isLiked(id, userId),
+                    Forum.isCollected(id, userId)
+                ]);
+                results[id] = { liked, collected };
+            }));
+
+            res.json(results);
+        } catch (error) {
+            console.error('批量获取状态错误:', error);
+            res.status(500).json({ error: '批量获取状态失败' });
         }
     }
 
@@ -242,35 +307,35 @@ class ForumController {
         try {
             const { id } = req.params;
 
-            const [postCount, receivedLikes, commentCount, profile, joinDate] = await Promise.all([
-                Forum.getUserPostCount(id),
-                Forum.getUserReceivedLikes(id),
-                Forum.getUserCommentCount(id),
-                Forum.getUserProfile(id),
-                Forum.getUserJoinDate(id)
-            ]);
+    // 获取指定用户信息（公开）
+    static async getUserById(req, res) {
+        try {
+            const { id } = req.params;
 
-            // 从帖子中获取用户名
-            const userPost = await Forum.getUserPosts(id, 1, 0);
-            const username = userPost.length > 0 ? userPost[0].author_name : `用户${id.slice(-6)}`;
+            // 从 token 中获取当前用户（如果有登录）
+            const currentUserId = req.user?.id;
+
+            // 获取用户基本信息
+            const userInfo = await Forum.getUserBasicInfo(id);
+
+            const [postCount, receivedLikes] = await Promise.all([
+                Forum.getUserPostCount(id),
+                Forum.getUserReceivedLikes(id)
+            ]);
 
             res.json({
                 id,
-                username,
-                joinDate,
-                profile: {
-                    points: profile.points,
-                    level: profile.level,
-                    levelTitle: profile.levelTitle,
-                    levelIcon: profile.levelIcon,
-                    expertiseTags: profile.expertise_tags,
-                    bio: profile.bio
-                },
+                username: userInfo?.username || `用户${String(id).slice(-6)}`,
                 stats: {
                     posts: postCount,
-                    comments: commentCount,
                     receivedLikes
                 }
+            });
+        } catch (error) {
+            console.error('获取用户信息错误:', error);
+            res.status(500).json({ error: '获取用户信息失败' });
+        }
+    }
             });
         } catch (error) {
             console.error('获取用户信息错误:', error);

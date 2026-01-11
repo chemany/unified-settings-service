@@ -13,6 +13,7 @@ class User {
         } else {
             basePath = path.join(__dirname, '..', '..', 'user-data-v2');
         }
+        console.log('[User-CSV] 使用CSV账户系统');
         
         this.userDataPath = path.join(basePath, 'settings');
         this.usersCSVPath = path.join(this.userDataPath, 'users.csv');
@@ -224,12 +225,13 @@ class User {
 
             let csvUser = null;
             for (let i = 1; i < lines.length; i++) {
-                const [user_id, username, emailField, created_at, last_login, status] = lines[i].split(',');
+                const [user_id, username, emailField, password, created_at, last_login, status] = lines[i].split(',');
                 if (emailField === email) {
                     csvUser = {
                         id: user_id,
                         email: emailField,
                         username: username,
+                        password: password,
                         created_at: created_at,
                         last_login: last_login,
                         status: status
