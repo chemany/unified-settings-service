@@ -1,8 +1,8 @@
 {
-  "endpoint": "http://192.168.10.55:10096",
-  "timeout": 30,
+  "endpoint": "http://127.0.0.1:10096",
+  "timeout": 180,
   "language": "zh",
-  "description": "FunASR 语音识别服务配置 (Mac 局域网)",
-  "version": "1.0.0",
-  "last_updated": "2026-01-08T10:45:00.000Z"
+  "description": "FunASR 语音识别服务配置 (本地服务器)",
+  "version": "1.0.1",
+  "last_updated": "2026-01-11T19:17:00.000Z"
 }
