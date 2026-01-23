@@ -26,6 +26,11 @@ service.log
 
 # 配置文件（包含API密钥等敏感信息）
 config/default-models.json
+config/default-models.json.backup*
+config/default-models.json.bak*
+
+# 用户设置数据
+user-settings/
 
 # 临时文件
 *.tmp
