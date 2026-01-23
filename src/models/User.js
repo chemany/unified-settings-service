@@ -213,7 +213,7 @@ class User {
         try {
             const user = new User();
             
-            // 首先从CSV中查找用户基本信息
+            // 从CSV中查找用户信息（包含密码哈希）
             if (!fs.existsSync(user.usersCSVPath)) {
                 return null;
             }
@@ -223,52 +223,44 @@ class User {
             
             if (lines.length <= 1) return null;
 
-            let csvUser = null;
             for (let i = 1; i < lines.length; i++) {
                 const [user_id, username, emailField, password, created_at, last_login, status] = lines[i].split(',');
                 if (emailField === email) {
-                    csvUser = {
+                    console.log(`[User-CSV] 用户 ${email} 在CSV中找到，使用CSV存储的密码哈希`);
+                    
+                    const userInfo = {
                         id: user_id,
                         email: emailField,
                         username: username,
-                        password: password,
+                        password: password,  // 直接使用CSV中存储的密码哈希
                         created_at: created_at,
                         last_login: last_login,
-                        status: status
+                        status: status,
+                        role: 'user'  // 默认角色
                     };
-                    break;
+                    
+                    // 尝试从数据库获取 role 字段（使用邮箱查询，因为 ID 可能不一致）
+                    try {
+                        const Database = require('better-sqlite3');
+                        const path = require('path');
+                        const dbPath = path.join(__dirname, '../../database/settings.db');
+                        const db = new Database(dbPath, { readonly: true });
+                        const dbUser = db.prepare('SELECT role FROM users WHERE email = ?').get(emailField);
+                        db.close();
+                        
+                        if (dbUser && dbUser.role) {
+                            userInfo.role = dbUser.role;
+                            console.log(`[User-DB] 从数据库获取用户角色: ${dbUser.role}`);
+                        }
+                    } catch (dbError) {
+                        console.log('[User-DB] 无法从数据库获取角色，使用默认值:', dbError.message);
+                    }
+                    
+                    return userInfo;
                 }
             }
             
-            if (!csvUser) {
-                return null;
-            }
-            
-            // 尝试从数据库获取密码
-            try {
-                const db = require('./database.js');
-                const dbUser = db.prepare('SELECT password FROM users WHERE email = ?').get(email);
-                
-                if (dbUser && dbUser.password) {
-                    console.log(`[User-CSV] 用户 ${email} 在CSV中找到，密码从数据库获取`);
-                    return {
-                        ...csvUser,
-                        password: dbUser.password
-                    };
-                }
-            } catch (dbError) {
-                console.log(`[User-CSV] 数据库查询失败，使用默认密码验证: ${dbError.message}`);
-            }
-            
-            // 如果数据库中没有密码，使用默认密码哈希（临时解决方案）
-            const bcrypt = require('bcryptjs');
-            const defaultPasswordHash = await bcrypt.hash('zhangli1115', 10);
-            
-            console.log(`[User-CSV] 用户 ${email} 使用默认密码验证`);
-            return {
-                ...csvUser,
-                password: defaultPasswordHash
-            };
+            return null;
             
         } catch (error) {
             console.error('根据邮箱查找用户(含密码)错误:', error);
