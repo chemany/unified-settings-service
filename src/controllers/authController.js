@@ -77,7 +77,7 @@ class AuthController {
                     role: userWithPassword.role || 'user'
                 },
                 process.env.JWT_SECRET || 'your-secret-key',
-                { expiresIn: '24h' }
+                { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
             );
 
             // 获取用户信息(不含密码)
@@ -166,7 +166,7 @@ class AuthController {
                         role: user.role || 'user'
                     },
                     process.env.JWT_SECRET || 'your-secret-key',
-                    { expiresIn: '24h' }
+                    { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
                 );
 
                 res.json({

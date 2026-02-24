@@ -70,3 +70,4 @@ build/
 # 备份文件
 *.bak
 *.backup
+config/MODEL_CONFIG_SUMMARY.md
