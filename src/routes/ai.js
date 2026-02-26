@@ -48,12 +48,27 @@ router.post('/chat', auth, async (req, res) => {
 
         console.log(`Using model config: ${modelConfig.name} (${modelConfig.model_name})`);
 
-        const response = await axios.post(`${modelConfig.base_url}/chat/completions`, {
-            model: modelConfig.model_name,
-            messages: messages,
-            temperature: modelConfig.temperature || 0.7,
-            max_tokens: modelConfig.max_tokens || 2000
-        }, {
+        const normalizedBaseURL = (modelConfig.base_url || '').replace(/\/+$/, '');
+        const useResponsesAPI = /\/responses$/i.test(normalizedBaseURL);
+        const requestURL = useResponsesAPI ? normalizedBaseURL : `${normalizedBaseURL}/chat/completions`;
+        const requestBody = useResponsesAPI
+            ? {
+                model: modelConfig.model_name,
+                input: messages.map(m => ({
+                    role: m.role || 'user',
+                    content: m.content || ''
+                })),
+                temperature: modelConfig.temperature || 0.7,
+                max_output_tokens: modelConfig.max_tokens || 2000
+            }
+            : {
+                model: modelConfig.model_name,
+                messages: messages,
+                temperature: modelConfig.temperature || 0.7,
+                max_tokens: modelConfig.max_tokens || 2000
+            };
+
+        const response = await axios.post(requestURL, requestBody, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${modelConfig.api_key}`,
@@ -62,7 +77,14 @@ router.post('/chat', auth, async (req, res) => {
             }
         });
 
-        const content = response.data.choices?.[0]?.message?.content || '';
+        const content = useResponsesAPI
+            ? (response.data.output || [])
+                .flatMap(item => item.content || [])
+                .filter(part => part.type === 'output_text')
+                .map(part => part.text)
+                .filter(Boolean)
+                .join('\n')
+            : (response.data.choices?.[0]?.message?.content || '');
 
         res.json({
             code: 0, // Siyuan expects code 0 for success
