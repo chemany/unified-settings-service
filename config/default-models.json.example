@@ -10,5 +10,15 @@
     "description": "免费的DeepSeek模型",
     "version": "2.0.0",
     "last_updated": "2025-01-21T10:00:00.000Z"
+  },
+  "builtin_paddleocr": {
+    "name": "PaddleOCR PP-OCRv5",
+    "provider": "paddleocr",
+    "base_url": "http://127.0.0.1:8081",
+    "model_name": "PP-OCRv5",
+    "enabled": true,
+    "description": "本机 PaddleOCR，用于图片和扫描版 PDF 的文字识别",
+    "version": "1.0.0",
+    "last_updated": "2026-07-16T00:00:00.000Z"
   }
-} 
+}

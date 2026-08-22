@@ -42,6 +42,52 @@ class User {
         return `cm${timestamp}${randomStr}`;
     }
 
+    static parseUsersCSV(csvData) {
+        const lines = csvData.split('\n').filter(line => line.trim());
+        if (lines.length === 0) {
+            return { headers: [], rows: [], indexByHeader: {} };
+        }
+
+        const headers = lines[0].split(',');
+        const indexByHeader = headers.reduce((indexes, header, index) => {
+            indexes[header] = index;
+            return indexes;
+        }, {});
+
+        return {
+            headers,
+            rows: lines.slice(1).map(line => line.split(',')),
+            indexByHeader
+        };
+    }
+
+    static getCSVField(row, indexByHeader, ...fieldNames) {
+        for (const fieldName of fieldNames) {
+            const index = indexByHeader[fieldName];
+            if (index !== undefined) {
+                return row[index] || '';
+            }
+        }
+        return '';
+    }
+
+    static setCSVField(row, indexByHeader, fieldName, value) {
+        const index = indexByHeader[fieldName];
+        if (index !== undefined) {
+            row[index] = value;
+        }
+    }
+
+    static setCSVFieldByAnyName(row, indexByHeader, fieldNames, value) {
+        for (const fieldName of fieldNames) {
+            const index = indexByHeader[fieldName];
+            if (index !== undefined) {
+                row[index] = value;
+                return;
+            }
+        }
+    }
+
     // 创建新用户
     static async createUser({ email, username, password }) {
         try {
@@ -152,20 +198,19 @@ class User {
                 return null;
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
+            const { rows, indexByHeader } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
             
-            if (lines.length <= 1) return null;
+            if (rows.length === 0) return null;
 
-            for (let i = 1; i < lines.length; i++) {
-                const [user_id, username, email, password, created_at, updated_at, status] = lines[i].split(',');
+            for (const row of rows) {
+                const user_id = this.getCSVField(row, indexByHeader, 'user_id');
                 if (user_id === id) {
                     return {
                         id: user_id,
-                        email: email,
-                        username: username,
-                        created_at: created_at,
-                        updated_at: updated_at
+                        email: this.getCSVField(row, indexByHeader, 'email'),
+                        username: this.getCSVField(row, indexByHeader, 'username'),
+                        created_at: this.getCSVField(row, indexByHeader, 'created_at'),
+                        updated_at: this.getCSVField(row, indexByHeader, 'updated_at')
                     };
                 }
             }
@@ -184,20 +229,19 @@ class User {
                 return null;
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
+            const { rows, indexByHeader } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
             
-            if (lines.length <= 1) return null;
+            if (rows.length === 0) return null;
 
-            for (let i = 1; i < lines.length; i++) {
-                const [user_id, username, emailField, password, created_at, updated_at, status] = lines[i].split(',');
+            for (const row of rows) {
+                const emailField = this.getCSVField(row, indexByHeader, 'email');
                 if (emailField === email) {
                     return {
-                        id: user_id,
+                        id: this.getCSVField(row, indexByHeader, 'user_id'),
                         email: emailField,
-                        username: username,
-                        created_at: created_at,
-                        updated_at: updated_at
+                        username: this.getCSVField(row, indexByHeader, 'username'),
+                        created_at: this.getCSVField(row, indexByHeader, 'created_at'),
+                        updated_at: this.getCSVField(row, indexByHeader, 'updated_at')
                     };
                 }
             }
@@ -218,24 +262,23 @@ class User {
                 return null;
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
+            const { rows, indexByHeader } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
             
-            if (lines.length <= 1) return null;
+            if (rows.length === 0) return null;
 
-            for (let i = 1; i < lines.length; i++) {
-                const [user_id, username, emailField, password, created_at, last_login, status] = lines[i].split(',');
+            for (const row of rows) {
+                const emailField = this.getCSVField(row, indexByHeader, 'email');
                 if (emailField === email) {
                     console.log(`[User-CSV] 用户 ${email} 在CSV中找到，使用CSV存储的密码哈希`);
                     
                     const userInfo = {
-                        id: user_id,
+                        id: this.getCSVField(row, indexByHeader, 'user_id'),
                         email: emailField,
-                        username: username,
-                        password: password,  // 直接使用CSV中存储的密码哈希
-                        created_at: created_at,
-                        last_login: last_login,
-                        status: status,
+                        username: this.getCSVField(row, indexByHeader, 'username'),
+                        password: this.getCSVField(row, indexByHeader, 'password_hash', 'password'),
+                        created_at: this.getCSVField(row, indexByHeader, 'created_at'),
+                        last_login: this.getCSVField(row, indexByHeader, 'last_login'),
+                        status: this.getCSVField(row, indexByHeader, 'status'),
                         role: 'user'  // 默认角色
                     };
                     
@@ -276,20 +319,19 @@ class User {
                 return null;
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
+            const { rows, indexByHeader } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
             
-            if (lines.length <= 1) return null;
+            if (rows.length === 0) return null;
 
-            for (let i = 1; i < lines.length; i++) {
-                const [user_id, usernameField, email, password, created_at, updated_at, status] = lines[i].split(',');
+            for (const row of rows) {
+                const usernameField = this.getCSVField(row, indexByHeader, 'username');
                 if (usernameField === username) {
                     return {
-                        id: user_id,
-                        email: email,
+                        id: this.getCSVField(row, indexByHeader, 'user_id'),
+                        email: this.getCSVField(row, indexByHeader, 'email'),
                         username: usernameField,
-                        created_at: created_at,
-                        updated_at: updated_at
+                        created_at: this.getCSVField(row, indexByHeader, 'created_at'),
+                        updated_at: this.getCSVField(row, indexByHeader, 'updated_at')
                     };
                 }
             }
@@ -334,34 +376,31 @@ class User {
                 throw new Error('用户数据文件不存在');
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
+            const { headers, rows, indexByHeader } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
             
-            if (lines.length <= 1) {
+            if (rows.length === 0) {
                 throw new Error('没有找到用户');
             }
 
-            const headers = lines[0];
-            const updatedLines = [headers];
+            const updatedLines = [headers.join(',')];
             let userFound = false;
 
-            for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].split(',');
-                if (parts[0] === userId) {
+            for (const parts of rows) {
+                if (this.getCSVField(parts, indexByHeader, 'user_id') === userId) {
                     userFound = true;
                     
                     // 更新字段
-                    if (email) parts[2] = email;
-                    if (username) parts[1] = username;
+                    if (email) this.setCSVField(parts, indexByHeader, 'email', email);
+                    if (username) this.setCSVField(parts, indexByHeader, 'username', username);
                     if (password) {
                         const saltRounds = 10;
-                        parts[3] = await bcrypt.hash(password, saltRounds);
+                        this.setCSVFieldByAnyName(parts, indexByHeader, ['password_hash', 'password'], await bcrypt.hash(password, saltRounds));
                     }
-                    parts[5] = new Date().toISOString();
+                    this.setCSVField(parts, indexByHeader, 'updated_at', new Date().toISOString());
                     
                     updatedLines.push(parts.join(','));
                 } else {
-                    updatedLines.push(lines[i]);
+                    updatedLines.push(parts.join(','));
                 }
             }
 
@@ -385,19 +424,16 @@ class User {
                 return false;
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
+            const { headers, rows, indexByHeader } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
             
-            if (lines.length <= 1) return false;
+            if (rows.length === 0) return false;
 
-            const headers = lines[0];
-            const updatedLines = [headers];
+            const updatedLines = [headers.join(',')];
             let userFound = false;
 
-            for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].split(',');
-                if (parts[0] !== userId) {
-                    updatedLines.push(lines[i]);
+            for (const parts of rows) {
+                if (this.getCSVField(parts, indexByHeader, 'user_id') !== userId) {
+                    updatedLines.push(parts.join(','));
                 } else {
                     userFound = true;
                 }
@@ -419,9 +455,8 @@ class User {
                 return 0;
             }
 
-            const csvData = fs.readFileSync(user.usersCSVPath, 'utf8');
-            const lines = csvData.split('\n').filter(line => line.trim());
-            return Math.max(0, lines.length - 1); // 减去表头
+            const { rows } = this.parseUsersCSV(fs.readFileSync(user.usersCSVPath, 'utf8'));
+            return rows.length;
         } catch (error) {
             console.error('获取用户总数错误:', error);
             throw error;
