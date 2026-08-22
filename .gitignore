@@ -73,3 +73,7 @@ build/
 *.bak
 *.backup
 config/MODEL_CONFIG_SUMMARY.md
+
+# 本机开发/测试脚本（含将被清除的 API 密钥历史，改为从环境变量读取）
+test-openrouter.js
+generate_test_token.js
