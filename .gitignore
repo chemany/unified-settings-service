@@ -28,6 +28,8 @@ service.log
 config/default-models.json
 config/default-models.json.backup*
 config/default-models.json.bak*
+# 向量化服务真实配置文件（含 API 密钥，不入库，只提交 .example 模板）
+config/embedding-config.json
 
 # 用户设置数据
 user-settings/

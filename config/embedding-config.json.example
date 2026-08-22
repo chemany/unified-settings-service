@@ -1,0 +1,9 @@
+{
+  "provider": "siliconflow",
+  "apiKey": "your-siliconflow-api-key-here",
+  "model": "BAAI/bge-m3",
+  "apiBaseUrl": "https://api.siliconflow.cn/v1",
+  "encodingFormat": "float",
+  "timeout": 30,
+  "enabled": true
+}
